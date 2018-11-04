@@ -28,20 +28,19 @@ exports.authenticate_user = function(req, res) {
     User.findOne({'email': req.body.email}, 
         function(err, user){
             // error on findOne
-            if (err) res.status(500).send(err);
+            if (err) res.status(500).json({'description': err});
             // user found
             if (user) {
                 user.comparePassword(req.body.password, function(err, isMatch) {
                     // error on comparing
-                    if (err) res.status(500).json({});
-                    if (isMatch) {
+                    if (err) res.status(500).json({'description':'error in password handling'});
+                    if (isMatch)
                         res.json(user);
-                    } else {
-                        res.status(401).json({'msg':'authentication failed'});
-                    }
+                    else 
+                        res.status(401).json({'description':'authentication failed'});
                 });
             // no user found
-            } else res.status(404).send({'error':'user not found'})
+            } else res.status(404).send({'description':'user not found'});
         }
     );    
 };
