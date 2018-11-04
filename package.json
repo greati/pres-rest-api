@@ -1,0 +1,28 @@
+{
+  "name": "pres-rest-api",
+  "version": "1.0.0",
+  "description": "REST api for Pres app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/greati/pres-rest-api.git"
+  },
+  "author": "Vitor Greati",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/greati/pres-rest-api/issues"
+  },
+  "homepage": "https://github.com/greati/pres-rest-api#readme",
+  "devDependencies": {
+    "nodemon": "^1.18.5"
+  },
+  "dependencies": {
+    "bcrypt": "^3.0.2",
+    "express": "^4.16.4",
+    "mongoose": "^5.3.9"
+  }
+}
