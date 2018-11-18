@@ -4,6 +4,13 @@ var express = require('express'),
     mongoose = require('mongoose'),
     User = require('./api/models/userModel'),
     Presentation = require('./api/models/presentationModel'),
+    Presentation = require('./api/models/presSessionModel'),
+    Question = require('./api/models/questionModel');
+    AlternativeAnswer = require('./api/models/alternativeAnswerModel');
+    OneChoiceQuestion = require('./api/models/oneAnswerQuestionModel');
+    PartSession = require('./api/models/partSessionModel');
+    Answer = require('./api/models/answerModel');
+    AnswerChoice = require('./api/models/answerChoiceModel');
     bodyParser = require('body-parser');
 
 mongoose.Promise = global.Promise;

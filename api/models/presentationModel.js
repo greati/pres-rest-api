@@ -16,21 +16,9 @@ var PresentationSchema = new Schema({
         type: Date,
         default: Date.now
     },
-    date_time: {
-        type: Date,
-        required: 'Provide the presentation date and time'
-    },
-    local: {
-        description: {
-            type: String,
-            required: 'Provide the local of the presentation'
-        },
-        lat: Number,
-        lon: Number
-    },
     user: {
         type: Schema.ObjectId,
-        ref: 'UserSchema',
+        ref: 'User',
         required: 'Provide the user responsible for this presentation'
     }
 });
