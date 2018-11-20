@@ -6,8 +6,16 @@ var mongoose = require('mongoose'),
 exports.new_user = function(req, res) {
     var new_user = new User(req.body);
     new_user.save(function(err, user){
-        if (err)
-            res.status(500).send(err);
+        if (err) {
+            if (err.name == 'ValidationError') {
+                res.status(500).send({
+                    "code":1,
+                    "description":"Duplicate username"
+                });
+            } else {
+                res.status(500).send(err);
+            }
+        }
         res.json(user);
     });
 };
