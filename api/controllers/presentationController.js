@@ -12,7 +12,41 @@ exports.new_presentation = function(req, res) {
             res.status(500).send(err);
         res.json(pres);
     });
-};
+}; 
+
+exports.update_presentation = function(req, res) {
+    Presentation.findOneAndUpdate({_id:req.params.presId}, req.body, {new:true}, function(err, presentation){
+        if (err)
+            res.status(500).send(err);
+        res.json(presentation);
+    });
+}
+
+exports.delete_presentation = function(req, res) {
+    Presentation.remove({_id:req.params.presId}, function(err, presentation) {
+        if (err)
+            res.status(500).send(err);
+        res.json({'msg':'Presentation deleted'});
+    });
+}
+
+exports.read_presentation = function(req, res) {
+    Presentation
+        .findById(req.params.presId, function(err, presentation) {
+            if (err)
+              res.status(500).send(err);
+            res.json(presentation);
+        });
+}
+
+exports.list_presentations = function(req, res) {
+    Presentation
+        .find({'user':req.params.userId}, function(err, presentations) {
+            if (err)
+              res.status(500).send(err);
+            res.json(presentations);
+        });
+}
 
 exports.new_session = function(req, res) {
     var new_session = new PresSession(req.body);

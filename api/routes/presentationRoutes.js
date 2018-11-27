@@ -7,6 +7,14 @@ module.exports = function(app) {
     app.route('/presentations')
         .post(presentationController.new_presentation);
 
+    app.route('/presentations/:presId')
+        .put(presentationController.update_presentation)
+        .get(presentationController.read_presentation)
+        .delete(presentationController.delete_presentation);
+
+    app.route('/users/:userId/presentations')
+        .get(presentationController.list_presentations);
+
     app.route('/sessions')
         .post(presentationController.new_session);
 
