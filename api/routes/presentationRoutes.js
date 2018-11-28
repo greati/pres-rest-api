@@ -18,11 +18,17 @@ module.exports = function(app) {
     app.route('/sessions')
         .post(presentationController.new_session);
 
+    app.route('/presentations/:presId/sessions')
+        .get(presentationController.list_sessions_pres);
+
     app.route('/sessions/participations')
         .post(presentationController.new_participation);
 
     app.route('/questions')
         .post(presentationController.new_question);
+
+    app.route('/sessions/:sessionId/questions')
+        .get(presentationController.list_questions_session);
 
     app.route('/questions/answers')
         .post(presentationController.new_answer);
