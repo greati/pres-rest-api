@@ -30,6 +30,18 @@ module.exports = function(app) {
     app.route('/sessions/:sessionId/questions')
         .get(presentationController.list_questions_session);
 
+    app.route('/sessions/:sessionId/open')
+        .post(presentationController.open_session);
+
+    app.route('/sessions/:sessionId/close')
+        .post(presentationController.close_session);
+
+    app.route('/sessions/participations/enter')
+        .post(presentationController.enter_session);
+
+    app.route('/sessions/participations/quit')
+        .post(presentationController.quit_session);
+    
     app.route('/questions/answers')
         .post(presentationController.new_answer);
 }

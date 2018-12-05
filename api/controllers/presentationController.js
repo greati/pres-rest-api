@@ -5,6 +5,139 @@ var mongoose = require('mongoose'),
     PresSession = mongoose.model('PresSession'),
     OneChoiceQuestion = mongoose.model('OneChoiceQuestion');
 
+exports.enter_session = function(req, res) {
+
+    var code = req.params.sessionCode;
+
+    PresSession.findOne({'code':req.body.sessionCode}, function(err,session){
+        
+        if (err)
+            res.status(404).send(err);
+
+        PartSession.findOne({'session':session._id, 'user':mongoose.mongo.ObjectId(req.body.userId)}, function(err, part){
+
+            if (err)
+                res.status(500).send(err);
+               
+            if (!part) {
+                var new_part = new PartSession(
+                    {
+                        'user':mongoose.mongo.ObjectId(req.body.userId),
+                        'session':mongoose.mongo.ObjectId(session._id)
+                    }
+                );
+                new_part.save(function(err, part) {
+                    if (err)
+                        res.status(501).send(err);
+                    res.send(part);
+                });            
+            } else {
+                if (part.active) {
+                    res.status(401).send(err);
+                } else {
+                    part.update({'active':true}, function(err, part){
+                        if (err)
+                            res.status(500).send(err);
+                        res.json(part);
+                    });
+                }
+            }
+        
+        });
+
+  
+    });
+
+ 
+}
+
+exports.quit_session = function(req, res) {
+
+    PartSession.findOne({
+        'session':mongoose.mongo.ObjectId(req.body.sessionId), 
+        'user':mongoose.mongo.ObjectId(req.body.userId)}, function(err, part){
+        if (err)
+            res.status(404).send(err);
+        if(part) {
+            part.update({'active':false}, function(err,part){
+                if (err)
+                    res.status(500).send(err);
+                res.send(part);
+            });
+        } else {
+            res.status(404).send(err);
+        }
+    });
+}
+
+exports.open_session = function(req, res) {
+    PresSession.findById(req.params.sessionId, function(err, session){
+        if (err) {
+            res.status(500).send(err);
+            return;
+        }
+
+        session
+            .populate('presentation', 'user', function(err, session){
+                if (err) {
+                    res.status(500).send(err);
+                    return;
+                }
+                if (session.presentation.user._id.equals(req.params.userId)) {
+                    res.status(401).json({'msg':'you cannot open this session'});
+                    return;
+                }
+             if (!session.active) {
+                session.update({'active': true, 
+                                $push:{openings: {'date_opening':req.params.openingDate}}
+                               }, function(err, session) {
+                    if (err)
+                        res.status(500).send(err);
+                    res.json(session);
+                    return;
+                });
+            } else {
+                res.status(500).json({msg:'session already active'});
+            }        
+        }); 
+    });
+}
+
+exports.close_session = function(req, res) {
+    PresSession.findById(req.params.sessionId, function(err, session){
+        if (err) {
+            res.status(500).send(err);
+            return;
+        }
+
+        session
+            .populate('presentation', 'user', function(err, session){
+                if (err) {
+                    res.status(500).send(err);
+                    return;
+                }
+                if (session.presentation.user._id.equals(req.params.userId)) {
+                    res.status(401).json({'msg':'you cannot close this session'});
+                    return;
+                }
+             if (session.active) {
+                session.update({'active': false, 
+                                $push:{openings: {'date_opening':req.params.closingDate}}
+                               }, function(err, session) {
+                    if (err)
+                        res.status(500).send(err);
+                    res.json(session);
+                    return;
+                });
+            } else {
+                res.status(500).json({msg:'session already closed'});
+            }        
+        }); 
+    });
+}
+
+
+
 exports.new_presentation = function(req, res) {
     var new_presentation = new Presentation(req.body);
     new_presentation.save(function(err, pres) {
