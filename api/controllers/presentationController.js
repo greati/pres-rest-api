@@ -5,105 +5,177 @@ var mongoose = require('mongoose'),
     PresSession = mongoose.model('PresSession'),
     OneChoiceQuestion = mongoose.model('OneChoiceQuestion');
 
-exports.enter_session = function(req, res) {
+exports.open_question = function(req, res) {
+    var questionId = req.params.questionId;
 
-    var code = req.body.sessionCode;
-
-    PresSession.findOne({'code':req.body.sessionCode}, function(err,session){
-        
-        if (err)
-            res.status(404).send(err);
-
-        if (!session.active) {
-            res.status(401).send({'msg':'inactive session'});
-            return;
-        }
-
-        var query = {'session':session._id, 'user':mongoose.mongo.ObjectId(req.body.userId)};
-
-        PartSession.findOne(query, function(err, part){
-
-            if (err)
-                res.status(500).send(err);
-               
-            if (!part) {
-                var new_part = new PartSession(
-                    {
-                        'user':mongoose.mongo.ObjectId(req.body.userId),
-                        'session':mongoose.mongo.ObjectId(session._id)
-                    }
-                );
-                new_part.save(function(err, part) {
-                    if (err)
-                        res.status(501).send(err);
-                    res.json(part);
-                });            
-            } else {
-                if (part.active) {
-                    res.status(401).send({'msg':'this participation is already open'});
-                } else {
-                    PartSession.findOneAndUpdate(query, {'active':true}, {new : true}, function(err, partUpdate){
-                        if (err)
-                            res.status(500).send(err);
-                        //partUpdate.populate('session', '_id', function(err, partUpdatePop){
-                        //    if (err)
-                        //        res.status(500).send(err);
-                        //    res.json(partUpdatePop);
-                        //});
-                        partUpdate
-                            .populate(
-                                {
-                                    path:'user',
-                                    select:'_id'
-                                }
-                            )
-                            .populate(
-                              {
-                                path: 'session',
-                                populate: {
-                                    path: 'presentation',
-                                    populate: {
-                                        path: 'user'
-                                    }
-                                }
-                              }
-                            , function(err, partUpdatePop){
+    Question
+        .findById(questionId, function(err, question){
+            switch(question.kind) {
+                case 'OneChoiceQuestion': {
+                    question
+                    .populate('session', 'code active')
+                    .populate('alternatives')
+                    .exec(function(err, question){
+                        if (!question.session.active) {
+                            res.status(403).send({'msg':'session is inactive'});
+                            return;
+                        }
+                        else if (question.open) {
+                            res.status(403).send({'msg':'this question is open already'});
+                            return;
+                        } else {
+                            Question.updateOne(questionId, {'open':true}, {new:true}, function(err, question){
                                 if (err)
                                     res.status(500).send(err);
-                                res.json(partUpdatePop);
-                            });
-
+                                admin.messaging().sendToTopic(question.session.code,
+                                        JSON.stringify(question)
+                                    )
+                                        .then(function(response){
+                                            console.log("Sent message: " + response);
+                                            res.json(question);
+                                        })
+                                        .catch(function(error){
+                                            console.log("An error occurred: " + error);
+                                        });    
+                            });  
+                        }
                     });
                 }
-            }
-        
+            } 
         });
-    });
 }
 
-exports.quit_session = function(req, res) {
-
-    var query = {
-        'session':mongoose.mongo.ObjectId(req.body.sessionId), 
-        'user':mongoose.mongo.ObjectId(req.body.userId)};
-
-    PartSession.findOne(query, function(err, part){
-        if (err)
-            res.status(404).send(err);
-        if(part) {
-            if (!part.active) {
-                res.status(401).send({'msg':'this participation is closed already'}); 
-            } else {
-                PartSession.findOneAndUpdate(query, {'active':false}, {new : true}, function(err,part){
-                    if (err)
-                        res.status(500).send(err);
-                    res.json(part);
-                });
+exports.list_parts_user = function(req, res) {
+    PartSession
+        .find({'user':req.params.userId})
+        .populate('user', '_id')
+        .populate(
+            {
+                path: 'session',
+                populate: {
+                    path: 'presentation',
+                    populate: {
+                        path:'user',
+                        select: '_id name'
+                    } 
+                }
             }
-        } else {
-            res.status(404).send(err);
-        }
-    });
+        )
+        .exec(function(err, parts){
+            if (err)
+                res.status(500).send(err);
+            res.json(parts);
+        })
+}
+
+exports.enter_session = function(firebase_emitter) {
+    
+    return function(req, res) {
+
+        var code = req.body.sessionCode;
+        var client_token = req.body.clientToken;
+
+        PresSession.findOne({'code':req.body.sessionCode}, function(err,session){
+            
+            if (err)
+                res.status(404).send(err);
+
+            if (!session.active) {
+                res.status(401).send({'msg':'inactive session'});
+                return;
+            }
+
+            var query = {'session':session._id, 'user':mongoose.mongo.ObjectId(req.body.userId)};
+
+            PartSession.findOne(query, function(err, part){
+
+                if (err)
+                    res.status(500).send(err);
+                   
+                if (!part) {
+                    var new_part = new PartSession(
+                        {
+                            'user':mongoose.mongo.ObjectId(req.body.userId),
+                            'session':mongoose.mongo.ObjectId(session._id)
+                        }
+                    );
+                    new_part.save(function(err, part) {
+                        if (err)
+                            res.status(501).send(err);
+                        firebase_emitter.emit("enter_session", client_token, code);
+                        res.json(part);
+                    });            
+                } else {
+                    if (part.active) {
+                        res.status(401).send({'msg':'this participation is already open'});
+                    } else {
+                        PartSession.findOneAndUpdate(query, {'active':true}, {new : true}, function(err, partUpdate){
+                            if (err)
+                                res.status(500).send(err);
+                            partUpdate
+                                .populate(
+                                    {
+                                        path:'user',
+                                        select:'_id'
+                                    }
+                                )
+                                .populate(
+                                  {
+                                    path: 'session',
+                                    populate: {
+                                        path: 'presentation',
+                                        populate: {
+                                            path: 'user'
+                                        }
+                                    }
+                                  }
+                                , function(err, partUpdatePop){
+                                    if (err)
+                                        res.status(500).send(err);
+                                    firebase_emitter.emit("enter_session", client_token, code);
+                                    res.json(partUpdatePop);
+                                });
+
+                        });
+                    }
+                }
+            
+            });
+        });
+    }
+}
+
+exports.quit_session = function(firebase_emitter) { 
+    
+    return function(req, res) {
+
+        var client_token = req.body.clientToken;
+
+        var query = {
+            'session':mongoose.mongo.ObjectId(req.body.sessionId), 
+            'user':mongoose.mongo.ObjectId(req.body.userId)};
+
+        PartSession.findOne(query)
+            .populate('session', '_id code')
+            .exec(function(err, part){
+            if (err)
+                res.status(404).send(err);
+            if(part) {
+                if (!part.active) {
+                    res.status(401).send({'msg':'this participation is closed already'}); 
+                } else {
+                    PartSession.findOneAndUpdate(query, {'active':false}, {new : true}, function(err,partUp){
+                        if (err)
+                            res.status(500).send(err);
+                        firebase_emitter.emit("quit_session", client_token, part.session.code);
+                        res.json(part);
+                    });
+                }
+            } else {
+                res.status(404).send(err);
+            }
+        });
+    }
 }
 
 exports.open_session = function(req, res) {

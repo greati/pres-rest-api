@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = function(app) {
+module.exports = function(app, firebase_emitter) {
 
     var presentationController = require('../controllers/presentationController');
 
@@ -37,11 +37,17 @@ module.exports = function(app) {
         .post(presentationController.close_session);
 
     app.route('/sessions/participations/enter')
-        .post(presentationController.enter_session);
+        .post(presentationController.enter_session(firebase_emitter));
 
     app.route('/sessions/participations/quit')
-        .post(presentationController.quit_session);
+        .post(presentationController.quit_session(firebase_emitter));
+
+    app.route('/users/:userId/participations')
+        .get(presentationController.list_parts_user);
     
+    app.route('/questions/:questionId/open')
+        .post(presentationController.open_question);
+
     app.route('/questions/answers')
         .post(presentationController.new_answer);
 }

@@ -17,6 +17,10 @@ var QuestionSchema = new Schema({
     session: {
         type: Schema.ObjectId,
         ref: 'PresSession'
+    },
+    open: {
+        type: Boolean,
+        default: false
     }
 }, options);
 
