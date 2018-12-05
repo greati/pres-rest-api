@@ -7,14 +7,21 @@ var mongoose = require('mongoose'),
 
 exports.enter_session = function(req, res) {
 
-    var code = req.params.sessionCode;
+    var code = req.body.sessionCode;
 
     PresSession.findOne({'code':req.body.sessionCode}, function(err,session){
         
         if (err)
             res.status(404).send(err);
 
-        PartSession.findOne({'session':session._id, 'user':mongoose.mongo.ObjectId(req.body.userId)}, function(err, part){
+        if (!session.active) {
+            res.status(401).send({'msg':'inactive session'});
+            return;
+        }
+
+        var query = {'session':session._id, 'user':mongoose.mongo.ObjectId(req.body.userId)};
+
+        PartSession.findOne(query, function(err, part){
 
             if (err)
                 res.status(500).send(err);
@@ -29,41 +36,70 @@ exports.enter_session = function(req, res) {
                 new_part.save(function(err, part) {
                     if (err)
                         res.status(501).send(err);
-                    res.send(part);
+                    res.json(part);
                 });            
             } else {
                 if (part.active) {
-                    res.status(401).send(err);
+                    res.status(401).send({'msg':'this participation is already open'});
                 } else {
-                    part.update({'active':true}, function(err, part){
+                    PartSession.findOneAndUpdate(query, {'active':true}, {new : true}, function(err, partUpdate){
                         if (err)
                             res.status(500).send(err);
-                        res.json(part);
+                        //partUpdate.populate('session', '_id', function(err, partUpdatePop){
+                        //    if (err)
+                        //        res.status(500).send(err);
+                        //    res.json(partUpdatePop);
+                        //});
+                        partUpdate
+                            .populate(
+                                {
+                                    path:'user',
+                                    select:'_id'
+                                }
+                            )
+                            .populate(
+                              {
+                                path: 'session',
+                                populate: {
+                                    path: 'presentation',
+                                    populate: {
+                                        path: 'user'
+                                    }
+                                }
+                              }
+                            , function(err, partUpdatePop){
+                                if (err)
+                                    res.status(500).send(err);
+                                res.json(partUpdatePop);
+                            });
+
                     });
                 }
             }
         
         });
-
-  
     });
-
- 
 }
 
 exports.quit_session = function(req, res) {
 
-    PartSession.findOne({
+    var query = {
         'session':mongoose.mongo.ObjectId(req.body.sessionId), 
-        'user':mongoose.mongo.ObjectId(req.body.userId)}, function(err, part){
+        'user':mongoose.mongo.ObjectId(req.body.userId)};
+
+    PartSession.findOne(query, function(err, part){
         if (err)
             res.status(404).send(err);
         if(part) {
-            part.update({'active':false}, function(err,part){
-                if (err)
-                    res.status(500).send(err);
-                res.send(part);
-            });
+            if (!part.active) {
+                res.status(401).send({'msg':'this participation is closed already'}); 
+            } else {
+                PartSession.findOneAndUpdate(query, {'active':false}, {new : true}, function(err,part){
+                    if (err)
+                        res.status(500).send(err);
+                    res.json(part);
+                });
+            }
         } else {
             res.status(404).send(err);
         }
