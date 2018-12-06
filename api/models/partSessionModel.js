@@ -7,7 +7,7 @@ var PartSessionSchema = new Schema({
     user: {
         type: Schema.ObjectId,
         ref: 'User',
-        required: 'Provide the question title'
+        required: 'Provide the user'
     },
     session: {
         type: Schema.ObjectId,

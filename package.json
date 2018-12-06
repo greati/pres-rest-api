@@ -23,6 +23,7 @@
   "dependencies": {
     "bcrypt": "^3.0.2",
     "express": "^4.16.4",
+    "firebase-admin": "^6.3.0",
     "mongoose": "^5.3.9",
     "shortid": "^2.2.14"
   }

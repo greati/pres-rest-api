@@ -36,7 +36,27 @@ var PresSessionSchema = new Schema({
     active: {
         type: Boolean,
         default: false
-    }
+    },
+    openings: [
+        {
+            date_opening:{
+                type: Date
+            }
+        }
+    ],
+    closings: [
+        {
+            date_closing: {
+                type: Date
+            }
+        }
+    ],
+    questions: [
+        {
+            type:Schema.ObjectId,
+            ref: 'Question'
+        }
+    ]
 });
 
 module.exports = mongoose.model('PresSession', PresSessionSchema, 'PresSession');
