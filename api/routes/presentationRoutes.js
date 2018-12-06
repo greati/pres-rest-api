@@ -53,4 +53,7 @@ module.exports = function(app, firebase_emitter) {
 
     app.route('/questions/answers')
         .post(presentationController.new_answer);
+
+    app.route('/questions/:questionId/answers')
+        .get(presentationController.list_answers);
 }

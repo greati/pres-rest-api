@@ -82,13 +82,18 @@ exports.list_parts_user = function(req, res) {
         .populate(
             {
                 path: 'session',
-                populate: {
-                    path: 'presentation',
-                    populate: {
-                        path:'user',
-                        select: '_id name'
-                    } 
-                }
+                populate: [
+                    {
+                        path: 'presentation',
+                        populate: {
+                            path:'user',
+                            select: '_id name'
+                        } 
+                    }, {
+                        path:'questions',
+                        select:'_id'
+                    }
+                ]
             }
         )
         .exec(function(err, parts){
@@ -388,6 +393,7 @@ exports.new_session = function(req, res) {
 exports.list_sessions_pres = function(req, res) {
     PresSession.find({'presentation':req.params.presId})
         .populate('presentation', '_id title')
+        .populate('questions', '_id title open')
         .exec(function(err, sessions) {
             if (err)
                 res.status(500).send(err);
@@ -448,8 +454,24 @@ exports.new_participation = function(req, res) {
 exports.new_answer = function(req, res) {
     var new_answer = new AnswerChoice(req.body);
     new_answer.save(function(err, answer) {
-        if (err)
-            res.status(500).send(err);
-        res.json(answer);
+        answer.populate('question','_id')
+        .populate('choices','_id', function(err, answer){
+            if (err) {
+                res.status(500).send(err);
+            }
+            res.json(answer);
+        });
     });
 };
+
+exports.list_answers = function(req, res) {
+    Answer
+        .find({'question':req.params.questionId})
+        .populate('question', '_id')
+        .populate('choices')
+        .exec(function(err, questions){
+            if (err)
+                res.status(500).send(err);
+            res.json(questions);
+        });
+}
