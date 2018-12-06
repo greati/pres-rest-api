@@ -140,15 +140,24 @@ exports.enter_session = function(firebase_emitter) {
                         .populate(
                             {
                                 path: 'session',
-                                select: '_id',
-                                populate: {
-                                    path:'presentation',
-                                    select:'_id title',
-                                    populate: {
-                                        path:'user',
-                                        select: '_id name'
+                                populate:[
+                                    {
+                                        path:'presentation',
+                                        select:'_id title',
+                                        populate: {
+                                            path:'user',
+                                            select: '_id name'
+                                        }
+                                    },
+                                    {
+                                        path:'questions',
+                                        select:'_id title',
+                                        populate: {
+                                            path:'alternatives',
+                                            select:'_id text order'
+                                        }
                                     }
-                                }
+                                ]
                             
                             }
                         , function(err, part) {
@@ -173,12 +182,24 @@ exports.enter_session = function(firebase_emitter) {
                                 .populate(
                                   {
                                     path: 'session',
-                                    populate: {
-                                        path: 'presentation',
+                                    populate: [
+                                    {
+                                        path:'presentation',
+                                        select:'_id title',
                                         populate: {
-                                            path: 'user'
+                                            path:'user',
+                                            select: '_id name'
+                                        }
+                                    },
+                                    {
+                                        path:'questions',
+                                        select:'_id title',
+                                        populate: {
+                                            path:'alternatives',
+                                            select:'_id text order'
                                         }
                                     }
+                                    ]
                                   }
                                 , function(err, partUpdatePop){
                                     if (err)
@@ -386,7 +407,18 @@ exports.new_question = function(req, res) {
             question.populate("session", "_id", function(err, question){
                 if (err)
                     res.status(500).send(err);
-                res.json(question);
+                
+                var sessionId = question.session._id;
+
+                PresSession.findOneAndUpdate(
+                    {'_id' : sessionId},
+                    {$push: {questions: question}},
+                    function(err, session){
+                    if (err)
+                        res.status(500).send(err);
+                    res.json(question);
+                });
+
             });
         });
     });

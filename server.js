@@ -18,7 +18,7 @@ const EventEmitter = require("events");
 // Start firebase admin
 var admin = require('firebase-admin');
 
-var serviceAccount = require('/home/vitorgreati/pres-ae33c-firebase-adminsdk-vy4rg-d916570045.json');
+var serviceAccount = require('/home/vitorgreati/pres-ae33c-firebase-adminsdk-vy4rg-44b9117705.json');
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),

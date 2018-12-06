@@ -50,6 +50,12 @@ var PresSessionSchema = new Schema({
                 type: Date
             }
         }
+    ],
+    questions: [
+        {
+            type:Schema.ObjectId,
+            ref: 'Question'
+        }
     ]
 });
 
