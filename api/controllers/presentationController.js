@@ -3,46 +3,76 @@
 var mongoose = require('mongoose'),
     Presentation = mongoose.model('Presentation'),
     PresSession = mongoose.model('PresSession'),
-    OneChoiceQuestion = mongoose.model('OneChoiceQuestion');
+    OneChoiceQuestion = mongoose.model('OneChoiceQuestion'),
+    Question = mongoose.model('Question');
 
-exports.open_question = function(req, res) {
+exports.close_question = function(req, res) {
+    
     var questionId = req.params.questionId;
+    var userId = req.params.userId;
 
-    Question
-        .findById(questionId, function(err, question){
-            switch(question.kind) {
-                case 'OneChoiceQuestion': {
-                    question
-                    .populate('session', 'code active')
-                    .populate('alternatives')
-                    .exec(function(err, question){
-                        if (!question.session.active) {
-                            res.status(403).send({'msg':'session is inactive'});
-                            return;
-                        }
-                        else if (question.open) {
-                            res.status(403).send({'msg':'this question is open already'});
-                            return;
-                        } else {
-                            Question.updateOne(questionId, {'open':true}, {new:true}, function(err, question){
-                                if (err)
-                                    res.status(500).send(err);
-                                admin.messaging().sendToTopic(question.session.code,
-                                        JSON.stringify(question)
-                                    )
-                                        .then(function(response){
-                                            console.log("Sent message: " + response);
-                                            res.json(question);
-                                        })
-                                        .catch(function(error){
-                                            console.log("An error occurred: " + error);
-                                        });    
-                            });  
-                        }
+        Question.findOne({'_id':questionId})
+            .populate('session', '_id code')
+            .exec(function(err, question){
+            if (err)
+                res.status(404).send(err);
+            if(question) {
+                if (!question.open) {
+                    res.status(401).send({'msg':'this question is closed already'}); 
+                } else {
+                    Question.findOneAndUpdate({'_id':questionId}, {'open':false}, {new : true}, function(err,questionUp){
+                        if (err)
+                            res.status(500).send(err);
+                        res.json(questionUp);
                     });
                 }
-            } 
+            } else {
+                res.status(404).send(err);
+            }
         });
+ }
+
+
+exports.open_question = function(firebase_emitter) {
+    
+    return function(req, res) {
+        var questionId = req.params.questionId;
+
+        Question
+            .findById(questionId, function(err, question){
+                switch(question.kind) {
+                    case 'OneChoiceQuestion': {
+                        question
+                        .populate('session', 'code active')
+                        .populate('alternatives', function(err, question){
+                            if (!question.session.active) {
+                                res.status(403).send({'msg':'session is inactive'});
+                                return;
+                            }
+                            else if (question.open) {
+                                res.status(403).send({'msg':'this question is open already'});
+                                return;
+                            } else {
+                                Question.updateOne({'_id':questionId}, {'open':true}, {new:true}, function(err, questionUp){
+                                    if (err)
+                                        res.status(500).send(err);
+                                    firebase_emitter.emit('notifyTopic', question.session.code, 
+                                        {
+                                            'data': { 
+                                                'type':'open_question',
+                                                'question_id' : question.toObject()._id.toString() //'test'//JSON.stringify(questionUp.title)
+                                            }
+                                        }
+                                    );
+                                    res.json(questionUp);
+    
+                                });  
+                            }
+                        });
+                    }
+                } 
+            });
+    }
 }
 
 exports.list_parts_user = function(req, res) {
@@ -80,6 +110,9 @@ exports.enter_session = function(firebase_emitter) {
             if (err)
                 res.status(404).send(err);
 
+            if(!session)
+                res.status(404).send({'msg':'session not found'});
+
             if (!session.active) {
                 res.status(401).send({'msg':'inactive session'});
                 return;
@@ -102,8 +135,26 @@ exports.enter_session = function(firebase_emitter) {
                     new_part.save(function(err, part) {
                         if (err)
                             res.status(501).send(err);
-                        firebase_emitter.emit("enter_session", client_token, code);
-                        res.json(part);
+                        part
+                        .populate('user', '_id')
+                        .populate(
+                            {
+                                path: 'session',
+                                select: '_id',
+                                populate: {
+                                    path:'presentation',
+                                    select:'_id title',
+                                    populate: {
+                                        path:'user',
+                                        select: '_id name'
+                                    }
+                                }
+                            
+                            }
+                        , function(err, part) {
+                            firebase_emitter.emit("enter_session", client_token, code);
+                            res.json(part);
+                        });
                     });            
                 } else {
                     if (part.active) {

@@ -46,7 +46,10 @@ module.exports = function(app, firebase_emitter) {
         .get(presentationController.list_parts_user);
     
     app.route('/questions/:questionId/open')
-        .post(presentationController.open_question);
+        .post(presentationController.open_question(firebase_emitter));
+
+    app.route('/questions/:questionId/close')
+        .post(presentationController.close_question);
 
     app.route('/questions/answers')
         .post(presentationController.new_answer);

@@ -15,7 +15,7 @@ module.exports = function(emitter, admin) {
             admin.messaging()
             .subscribeToTopic(client_token, session_code)
             .then(function(response){
-                console.log("Successfully subscribed to topic " + session_code);
+                console.log("Successfully subscribed to topic " + session_code + ", client " + client_token);
             })
             .catch(function(error){
                 console.log("Error when subscribing to topic " + session_code + ": " + error);
@@ -27,7 +27,7 @@ module.exports = function(emitter, admin) {
 		
 		admin.messaging().sendToTopic(topic_name, payload)
 			.then(function(response){
-				console.log("Sent message: " + response);
+				console.log("Sent message to: " + topic_name + "," + response);
 			})
 			.catch(function(error){
 				console.log("An error occurred: " + error);
